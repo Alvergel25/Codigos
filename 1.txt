@@ -1,0 +1,278 @@
+
+Codigo:
+_________________
+
+PlayerMovement:
+________________________________________
+
+//Le pones la Speed y las teclas para moverse que creamos correspondientes
+//Tiene un BoxCollider 2D no trigger
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerMovement : MonoBehaviour
+{
+    public float speed = 10; //Elegimos la velocidad del objeto que aunque por defecto es 10 el editor podra cambiarla.
+    //En estas 4 lineas de abajo elejimos las teclas para que el jugador mueva al objeto que aunque por defecto son las que hemos puesto ahi el editor podra cambiarlo.
+    public KeyCode leftkey = KeyCode.A;
+    public KeyCode Rightkey = KeyCode.D;
+    public KeyCode Upkey = KeyCode.W;
+    public KeyCode Downkey = KeyCode.S;
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    //En cada uno de los "if" de este update le decimos al juego que si el jugador pulsa las teclas puestas arriba el objeto se movera a la direccion correspondiente y con la velocidad correspondiente a la variante speed, o si pulsa las flechas de movimiento hara la misma accion solo siendo necesario pulsar uno u otro, 
+    void Update()
+    {
+       if(Input.GetKey(leftkey) || Input.GetKey(KeyCode.LeftArrow))
+       {
+            // translate es trasladar
+            transform.Translate(new Vector2 (-speed, 0.0f) * Time.deltaTime);
+       }
+
+       else if(Input.GetKey(Rightkey) || Input.GetKey(KeyCode.RightArrow))
+        {
+            // translate es trasladar
+            transform.Translate(new Vector2 (speed, 0.0f) * Time.deltaTime);
+       }
+
+       if(Input.GetKey(Upkey) || Input.GetKey(KeyCode.UpArrow))
+        {
+            // translate es trasladar
+            transform.Translate(new Vector2 (0.0f, speed) * Time.deltaTime);
+       }
+
+       if(Input.GetKey(Downkey) || Input.GetKey(KeyCode.DownArrow))
+        {
+            // translate es trasladar
+            transform.Translate(new Vector2 (0.0f, -speed) * Time.deltaTime);
+       }
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        //Si tiene el componente LetherBehavior se destruye, sino no.
+        if (collision.GetComponent<LetherBehavior>())
+        {
+            Destroy(collision.gameObject);
+        }
+    }
+}
+
+
+
+
+LetherBehavior:
+___________________________________
+
+//Se lo añadimos al TextMeshPro Letra que luego convertiremos en Prefab
+//Gravit: 1; Letter: 7
+//Box Collider 2D Trigger
+//Rigidbody 2d: Mass 1; Linear Drag 0; Angular Drag 0.05; GravityScale 1;
+
+
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class LetherBehavior : MonoBehaviour
+{
+    //Le estamos dando una gravedad al objeto que el editor puede cambiar a su gusto ya que es publica.
+    public float gravity = 10;
+    //Es una opcion publica que hace que el edito pùeda elegir que letra poner en el objeto letter.
+    public char letter;
+    //Declaramos la variante maxSpeed que al ser float sera de numeros tanto de decimales como enteros.
+    private float maxSpeed;
+    //Creamos la variable textComponet con TextMeshPro para las letras.
+    private TextMeshPro textComponet;
+
+    //En este Start hacemos que las letras de letter sean aleatorias de la A a la Z con ASCII en numeros y el ToString para combertirlo en letras y tambien una velocidad de caida aleatoria de 2 a 8.
+    void Start()
+    {
+        letter = (char)Random.Range(65, 91);
+        textComponet = GetComponent<TextMeshPro>();
+        textComponet.text = letter.ToString();
+        maxSpeed = Random.Range(2, 8);
+        Debug.Log(letter);
+    }
+
+    //En este Update hacemos que la velocidad sea aleatoria siempre que el juego se actualice y que siga una velocidad mas predecible gracias al Time.deltaTime, ademas hacemos que si el jugador pulsa la letra correspondiente a la que esta callendo en ese momento esta se destruya.
+    void Update()
+    {
+        transform.Translate(new Vector2(0.0f, -maxSpeed) * Time.deltaTime);
+
+        if (Input.GetKeyDown(char.ToLower(letter).ToString()))
+        {
+            Destroy(gameObject);
+        }
+        
+
+        
+    }
+
+    
+}
+
+
+
+
+
+Spawner:
+_________________________________
+
+//Se lo seleccionamos al Empty Spawner
+//En Letter Prefab le ponemos el Prefab de Letra
+//Box Collider 2D trigger
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+public class Spawner : MonoBehaviour
+{
+    //Aqui declaramos las variables como la de generar el Prefab de las letras, el tiempo y la posicion.
+    public GameObject letterPrefab;
+    private float currentTime = 0;
+    private float maxTime;
+    private float position = 0;
+    // Start is called before the first frame update
+    //Aqui elegimos un tiempo aleatorio de aparicion de los objetos en un rango de 0.3 a 5 segundos.
+    void Start()
+    {
+        maxTime = Random.Range(0.3f, 5f);
+
+        
+    }
+
+    // Update is called once per frame
+    //Aqui hacemos que el tiempo siga siendo aleatorio durante toda la partida y que la posicion tambien sea aleatoria
+    void Update()
+    {
+      
+
+        currentTime += Time.deltaTime;
+        if(currentTime >= maxTime)
+        {
+            currentTime = 0;
+            maxTime = Random.Range(0.3f, 2f);
+            position = Random.Range(-10.5f, 9.5f);
+            if (position != 0)
+            {
+                Instantiate(letterPrefab, new Vector2(position, 5f), Quaternion.identity);
+                position = 0;
+            }
+        }
+
+       
+
+
+    }
+}
+
+
+
+
+DeathZone:
+____________________________________
+
+//Se lo añadimos a un Empty llamado DeathZone
+//Box Collider 2D trigger
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Inocente : MonoBehaviour
+{
+    // Start is called before the first frame update
+    void Start()
+    {
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+    
+    }
+
+    // Hace que el objeto asignado destruya todo lo que toque siempre que tenga colision.
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        Destroy(collision.gameObject);
+    }
+}
+
+
+
+Inocent:
+_________________________________________
+
+//Se lo añadimos al componente Peach
+//Box Collider 2D no trigger
+//Rigidbody 2D igual al del Player
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Inocent : MonoBehaviour
+{
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    //Aqui elegimos la velocidad de caida del objeto
+    void Update()
+    {
+        transform.Translate(new Vector2(0.0f, -5f) * Time.deltaTime);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

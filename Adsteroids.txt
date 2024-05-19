@@ -1,0 +1,595 @@
+Apuntes:
+_________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+
+Subir calidad sprite: Cambiar Bilinear a Point (no filter), darle mas tamaño en Max Size, darle mas calidad en Compression y darle a Apply
+Ten en cuenta el orden de las capas
+
+
+Codigo:
+_________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+
+
+PlayerMovement 
+______________________________
+
+
+//Para Nave Adsteroid, le añadimos Rigidbody2D y le ponemos la gravedad a 0, le añadimos un Box Collider 2D
+//Puedes asignarle las letras que quieras para el movimiento y tambien la velocidad pero ya viene con unas por defecto
+//Hay que asignarle el prefab de la bala en Bullet Prefab
+//En Bullet Spawner no hay que asignarle nada
+//Rigidbody 2D: Dynamic; Simulated; Mass 1; Linear Drag 0; Angular Drag 0.05; Gravity Scale 1; Collision Detection Discrete; Sleeping Mode Start Awake; Interpolate None;
+//Box Collider 2D: No Is Trigger
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
+
+[RequireComponent(typeof(Rigidbody2D))]
+
+
+
+//Obliga al gameobject que tenga este componente a tener otro compomnente como este.
+public class PlayerMovement : MonoBehaviour
+{
+    public Transform _bulletSpawner;
+    public GameObject BulletPrefab;
+    private float _maxSpeed;
+
+    public float speed = 5;
+    public KeyCode leftkey = KeyCode.A, Rightkey = KeyCode.D, Upkey = KeyCode.W, Downkey = KeyCode.S; //Se pueden poner en la misma linea, el = es para que sea una por defecto pero puede no ponerse y cambiarlo en el editor ya que es publico
+
+    //Para saber donde estan los bordes de la camara
+    private Camera _camera; //Para acceder a la camara, en este caso para hacer el movimiento toroidal
+
+    //Para saber cuanto mide el sprite y tambien para cambiar el color
+    private  SpriteRenderer _rend;  //Para acceder al sprite
+
+    //Para poder mover al personaje
+    private Rigidbody2D _rb; //Para poder acceder al Rigidbody
+
+    //Para la direccion
+    private Vector2 _dir;
+
+    //Los corchetes indican que es un array
+    public Color[] colors;
+    private int index = 0;
+
+
+
+    //public List<Color> listaColores;
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        //Si tiene el componente PlayerMovement se reinicia la escena.
+        if (collision.GetComponent<Asteroid>())
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+    }
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+
+
+
+
+        _maxSpeed = Random.Range(2, 8);
+
+        _camera = Camera.main; //Asi se accede a la camara, si tuvieramos varias camaras accederia a la primera camara que tuviera la tag MainCamera
+        _rend = GetComponent<SpriteRenderer>(); //Para acceder al sprite
+
+        //GetComponent recorre la lista de componentes del objeto en busca del componente buscado, si lo tiene nos lo debuelve en la consola, si no lo tiene nos devuelve null.
+        _rb = GetComponent<Rigidbody2D>(); //Para acceder al Rigidbody
+
+        
+        _rb.gravityScale = 0; //Le ponmemos la gravedad a 0 para que no caiga
+
+
+
+
+
+        //letters[3] = (char)(letters[1] + letters[2]); Nos sumaria el codigo ascii de las letras.
+        ////i++ es de uno en uno hacia arriba y i-- es de uno en uno hacia abajo.
+        //for (int i = 0; i < letters.Length; i++)
+        //{
+        //    print(letters[i]);
+        //}
+
+        //Nos da la letra "m" ya que es la [2] de kaka
+        //string kaka = "Ismael";
+        //print(kaka[2]);
+
+
+        //genteQueVaAFaltar = new List<string>();
+
+        //genteQueVaAFaltar.Add("Yanes");
+        //genteQueVaAFaltar.Add("Alonso");
+        //genteQueVaAFaltar.Add("Maria");
+        //genteQueVaAFaltar.Add("Carlos");
+
+        //foreach(string persona in genteQueVaAFaltar)
+        //{
+        //    Debug.Log(persona);
+        //}
+
+        //Debug.Log(genteQueVaAFaltar[1]);
+        //genteQueVaAFaltar.RemoveAt(1);
+
+    }
+
+    //private List<string> genteQueVaAFaltar;
+
+
+    // Update is called once per frame
+    void Update() //Mejor separarlo todo en metodos
+    {
+        CheckBounds();
+        Movement();
+        Shoot();
+        Skin();
+    }
+    
+   
+    void Shoot()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            GameObject bullet1 = Instantiate(BulletPrefab, transform.position, Quaternion.identity);
+            bullet1.GetComponent<Bullet>().direction = Vector2.right;
+            GameObject bullet2 = Instantiate(BulletPrefab, transform.position, Quaternion.identity);
+            bullet2.GetComponent<Bullet>().direction = -Vector2.right; // o Vector.Left
+            GameObject bullet3 = Instantiate(BulletPrefab, transform.position, Quaternion.identity);
+            bullet3.GetComponent<Bullet>().direction = Vector2.up;
+            GameObject bullet4 = Instantiate(BulletPrefab, transform.position, Quaternion.identity);
+            bullet4.GetComponent<Bullet>().direction = -Vector2.up;
+        }
+    }
+    void CheckBounds() //Movimiento toroidal
+    {
+        if (transform.position.y - _rend.bounds.size.y / 2 >= _camera.transform.position.y + _camera.orthographicSize) //Si hemos salido por arriba (Mas otras cosas tecnicas para que quede perfecto)
+        {
+            transform.position = new Vector2(transform.position.x, _camera.transform.position.y - _camera.orthographicSize - _rend.bounds.size.y / 3); //Teletransportar abajo, siempre en relacion a la camara
+        }
+
+        else if (transform.position.y + _rend.bounds.size.y / 2 <= _camera.transform.position.y - _camera.orthographicSize)
+        {
+            transform.position = new Vector2(transform.position.x, _camera.transform.position.y + _camera.orthographicSize - _rend.bounds.size.y / -3);
+        }
+
+
+        if (transform.position.x - _rend.bounds.size.x / 2 >= _camera.transform.position.x + _camera.orthographicSize * 2)
+        {
+            transform.position = new Vector2(_camera.transform.position.x - _camera.orthographicSize * 2 - _rend.bounds.size.x / 3, transform.position.y);
+        }
+
+        else if (transform.position.x + _rend.bounds.size.x / 2 <= _camera.transform.position.x - _camera.orthographicSize * 2)
+        {
+            transform.position = new Vector2(_camera.transform.position.x + _camera.orthographicSize * 2 - _rend.bounds.size.x / -3, transform.position.y);
+        }
+
+    }
+    void Skin()
+    {
+       //esto rellena el array
+       if (Input.GetKeyDown(KeyCode.Space))
+        {
+            _rend.color = colors[index];
+            //Suma uno a uno en el index
+            index++;
+            if (index == colors.Length)
+            {
+                index=0;
+            }
+        }
+
+    }
+    private void Movement()
+    {
+        _dir = new Vector2(0, 0);//Eso es para que no tenga deslizamiento, si no lo ponemos tendria el deslizamiento de la consola.
+
+        if (Input.GetKey(leftkey) || Input.GetKey(KeyCode.LeftArrow)) //Si pulsa la tecla asignada a la variable leftKey o (||) Si pulsa la tecla LeftArrow
+        {
+            //_dir.y/.x es para que mantenga la velocidad de los otros if.
+            _dir = new Vector2(-1, _dir.y); //Que la direccion de new Vector2 sea -1 en X y que en Y no cambie sea cual sea.
+            //(Con fisicas)_rb.velocity = new Vector2(-speed, 0);
+            //(Sin fisicas) transform.Translate(new Vector2(-speed, 0.0f) * Time.deltaTime);
+        }
+        else if (Input.GetKey(Rightkey) || Input.GetKey(KeyCode.RightArrow)) //Al ser un else if y no un if el programa le da priorida al if y no al else if asi si el jugador pulsa las dos letras solo ira en la direccion del if ignorando al else, si lo dos fueran un if las fuerzas se contrarestarian y no se moveria en ninguna direccion.
+        {
+            _dir = new Vector2(1, _dir.y);
+            //_rb.velocity = new Vector2( speed, 0);
+            //transform.Translate(new Vector2(speed, 0.0f) * Time.deltaTime);
+        }
+        if (Input.GetKey(Upkey) || Input.GetKey(KeyCode.UpArrow))
+        {
+            _dir = new Vector2(_dir.x, 1);
+            //_rb.velocity = new Vector2(0, speed);
+            //transform.Translate(new Vector2(0.0f, speed) * Time.deltaTime);
+        }
+        else if (Input.GetKey(Downkey) || Input.GetKey(KeyCode.DownArrow))
+        {
+            _dir = new Vector2(_dir.x, -1);
+            //_rb.velocity = new Vector2(0, -speed);
+            //transform.Translate(new Vector2(0.0f, -speed) * Time.deltaTime);
+        }
+    }
+    private void FixedUpdate() //Para fisicas es mejor el FixedUpdate que el Update
+    {
+
+        _rb.velocity = new Vector2(speed, speed) * _dir;
+    }
+}
+
+
+
+
+
+
+	private void Movemente()
+	{
+		_dir = new Vector2(0, 0) //Eso es para que no tenga deslizamiento, si no lo ponemos tendria el deslizamiento de la consola.
+		
+		if (Input.GetKey(leftkey) || Input.GetKey(KeyCode.LeftArrow)) //Si pulsa la tecla asignada a la variable leftKey o (||) Si pulsa la tecla LeftArrow
+		{
+			//_dir.y o _dir.x es para mantenga la velocidad de los otros if.
+			_dir = new Vector2(-1, _dir.y); //Que la direccion de new Vector2 sea -1 en X y que en Y no cambie sea cual sea.
+			//(Con fisicas)_rb.velocity = new Vector2(-speed, 0);
+			//(Sin fisicas) transform.Translate(new Vector2(-speed, 0.0f) * Time.deltaTime);
+		}
+		else if (Input.GetKey(Rightkey) || Input.GetKey(KeyCode.RightArrow)) //Al ser un else if y no un if el programa le da priorida al if y no al else if asi si el jugador pulsa las dos letras solo ira en la direccion del if ignorando al else, si lo dos fueran un if las fuerzas se contrarestarian y no se moveria en ninguna direccion.
+		{
+			_dir = new Vector2(1, _dir.y);
+		}
+		if (Input.GetKey(Upkey) || Input.GetKey(KeyCode.UpArrow))
+		{
+			_dir = new Vector2(_dir.x, 1);
+		}
+		else if (Input.GetKey(Downkey) || Input.GetKey(KeyCode.DownArrow))
+		{
+			_dir = new Vector2(_dir.x, -1);
+		}
+	}
+			
+
+
+
+	private void FixedUpdate() //Para fisicas es mejor el FixedUpdate que el Update
+	{
+		_rb.velocity = new Vector2(speed, speed) * _dir;
+	}
+}
+
+
+
+
+
+Bullet //Se le asigna a la bala
+
+public class Bullet : MonoBehaviour
+{
+
+
+
+Adsteroid 
+________________________________________________________
+//Se le añade al asteroide, el cual convertiremos en prebab
+//Asteroids Prebab: Le añadimos el prebab de asteroide
+//Rigidboy 2D: Igual que la nave
+//Box Collider 2D: Similar al de la nave pero adaptandose a su tamaño y ademas siendo trigger
+//Le podemos poner velocidad en el editor pero no deberiamos ya que lo suyo es que sea aleatoria
+
+
+using System.Collections;
+using System.Collections.Generic;
+using System.Xml.Serialization;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
+
+public class Asteroid : MonoBehaviour
+{
+    //Para saber cuanto mide el sprite y tambien para cambiar el color
+    private SpriteRenderer _rend;
+    
+    Vector2 direction;
+    //Para la direccion
+    
+    public float speed;
+    //La velocidad
+    
+    Rigidbody2D _rb;
+    //Para la direccion
+
+    public GameObject AsteroidsPrefab;
+
+    //Para saber donde estan los bordes de la camara
+    private Camera _camera;
+
+    private int index = 0;
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+
+        _camera = Camera.main;
+        _rend = GetComponent<SpriteRenderer>();
+
+        //GetComponent recorre la lista de componentes del objeto en busca del componente buscado, si lo tiene nos lo debuelve en la consola, si no lo tiene nos devuelve null.
+        _rb = GetComponent<Rigidbody2D>();
+
+        //quitamos la gravedad
+        _rb.gravityScale = 0;
+
+
+        direction.x = Random.Range(-1, 2);
+
+        do
+        {
+            direction.y = Random.Range(-1, 2);
+        } while (direction.y == 0);
+
+        speed = Random.Range(2, 5);
+        _rb = GetComponent<Rigidbody2D>();      
+
+    }
+
+    
+
+    // Update is called once per frame
+    void Update()
+    {
+        CheckBounds();
+    }
+
+    
+
+
+
+
+    void CheckBounds() //Movimiento toroidal
+    {
+        if (transform.position.y - _rend.bounds.size.y / 2 >= _camera.transform.position.y + _camera.orthographicSize)
+        {
+            transform.position = new Vector2(transform.position.x, _camera.transform.position.y - _camera.orthographicSize - _rend.bounds.size.y / 3);
+        }
+
+        else if (transform.position.y + _rend.bounds.size.y / 2 <= _camera.transform.position.y - _camera.orthographicSize)
+        {
+            transform.position = new Vector2(transform.position.x, _camera.transform.position.y + _camera.orthographicSize - _rend.bounds.size.y / -3);
+        }
+
+
+        if (transform.position.x - _rend.bounds.size.x / 2 >= _camera.transform.position.x + _camera.orthographicSize * 2)
+        {
+            transform.position = new Vector2(_camera.transform.position.x - _camera.orthographicSize * 2 - _rend.bounds.size.x / 3, transform.position.y);
+        }
+
+        else if (transform.position.x + _rend.bounds.size.x / 2 <= _camera.transform.position.x - _camera.orthographicSize * 2)
+        {
+            transform.position = new Vector2(_camera.transform.position.x + _camera.orthographicSize * 2 - _rend.bounds.size.x / -3, transform.position.y);
+        }
+
+    }
+
+    private void FixedUpdate()
+    {
+        _rb.velocity = direction * speed;
+    }
+
+    
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        //Si tiene el componente Bullet se destruye, sino no.    
+        if (collision.GetComponent<Bullet>())
+        {
+            index++;
+
+            Destroy(collision.gameObject);
+
+            var AdsteroidNum = Random.Range(2,5);
+
+            for (var i = 0; i < AdsteroidNum; i++)
+            {
+                GameObject asteroid = Instantiate(AsteroidsPrefab, transform.position, Quaternion.identity);
+                asteroid.transform.localScale = transform.localScale / 1.5f;
+                asteroid.GetComponent<Asteroid>().index = index;
+
+                if (index == 4)
+                {
+                    Destroy(asteroid);
+                }
+            }
+
+            Destroy(gameObject);
+
+
+        }
+    }
+
+
+
+   
+
+    //valor1 += valor2  es valor2 = valor2 + valor1
+
+
+    //void Swap()
+    //{
+    //    int a = 1; int b = 2;
+    //    int c = a;
+
+    //    a = b; b = c;
+    //}
+
+
+    // El swap lo hace por copia asi que los cambios no se ven reflejados a menos que le pongamos los ref que son de referencia
+    //int a = 5, b = 8;
+    //long c = 5090;
+    //Swap(ref a, ref b, out c);
+    //print("a: " + a + " b: " + b);
+
+
+
+    //in entra por referencia pero solo tiene permisos de lectura
+    //out es un parametro de salida
+    //void Swap(ref int num1, ref int num2, out long num3)
+    //{
+    //    int aux = num1;
+
+    //    num1 = num2;
+    //    num2 = aux;
+
+    //    num3 = 8;
+    //}
+
+
+
+}
+
+
+
+Bullet
+___________________________________
+//Se le añade a la bala, la cual convertiremos en prefab
+//Rigidbody 2D: Igual que el resto
+//Box Collider: Similar al resto pero con su tamaño y siendo trigger
+//Le añadimos velocidad en el editor
+//Direction: X=1 Y=0
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+
+public class Bullet : MonoBehaviour
+{
+    //Sirve para la direccion la cual pondremos en el editor
+    public float speed;
+    public Vector2 direction;
+    private Rigidbody2D rg;
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        rg = GetComponent<Rigidbody2D>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        rg.velocity = direction * speed;
+
+        //Destroye las balas despues de poner el tiempo asignado
+        Destroy(gameObject, 1);
+    }
+
+
+}
+
+
+
+
+Spawner
+________________________________
+
+//En el apartado Enemy le asignamos en Prebab de asteroid
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Spawner : MonoBehaviour
+{
+    public GameObject Enemy;
+    private float currentTime = 20;
+    private float maxTime = 20;
+    private float position = 0;
+    private List <Vector2> ListPositions;
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update() //Spawnea asteroides cada 20 segundo en una posicion aleatoria.-
+    {
+        ListPositions = new List<Vector2>();   
+        
+
+
+        currentTime += Time.deltaTime;
+        if (currentTime >= maxTime)
+        {
+            currentTime = 0;
+            position = Random.Range(-10.5f, 9.5f);
+
+            if (position != 0)
+            {
+                GameObject Enemy1 = Instantiate(Enemy, new Vector2(position, 5f), Quaternion.identity);
+                position = 0;
+
+                ListPositions.Add(Enemy1.transform.position);
+                
+
+            }
+
+            for (int i = 0; i < ListPositions.Count; i++)
+            {
+                Debug.Log(ListPositions[i]);
+            }
+        }
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

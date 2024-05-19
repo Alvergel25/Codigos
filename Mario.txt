@@ -1,0 +1,885 @@
+Esprite sheet
+Texzture Type: Sprite (2D and UI)
+Sprite Mode: Multiple
+
+Sprite Editor: Slide: Automatic ----- Slice
+
+Apply
+
+Calidad:
+Filter Mode: Point (no filter)
+Max Size: 4096
+Compresion: High Quality
+
+Fezzear rotacion al personage
+
+Crear suelo:
+Layers: Add Layer... : Layers //Coges una vacia y la llamas Ground
+Aplicarsela al suelo 
+
+
+
+Codigo:
+_______________________________
+
+
+MarioScript (PlayerMovement)
+_______________________________________
+
+//Material: Le añadimos MarioMaterial
+//Simulated: Si
+//Mass: 1
+//Linear Drag: 10
+//Angular Drag: 0.05
+//Gravity Scale: 7
+
+//Asignamos Las teclas
+//Speed: 5
+//Ray Distance: 0.5
+//Jump Force: 4
+//Ground Mask: Le asignamos la layer que corresponda al suelo, en este caso Ground
+//Jump Clip: Le asignamos el sonido que haga al saltar
+//Jump Time: 0
+
+//Collider (En este caso Capsule Collider 2D): Is Trigger No; Direction Vertical;
+
+//Tambien tiene el Script Fades
+
+
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel.Design;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+[RequireComponent(typeof(Rigidbody2D))]
+public class MarioScript : MonoBehaviour
+{
+    public int playerScore = 0;
+    public GameObject playerScoreUI;
+
+    public KeyCode rightKey, leftKey, jumpKey;
+    public float speed, rayDistance, radius, jumpForce; // Velocidad, distasncia de rayo, fuerza de salto, si son del mismo tipo se pueden poner en la misma variable
+    public LayerMask groundMask; //Capa de colisiones
+    public AudioClip jumpClip;
+
+    private Rigidbody2D rb;
+    private SpriteRenderer _rend;
+    private Animator _animator;
+    private Vector2 dir;
+    private bool _intentionToJump = false;
+
+    private float jumpTimeCounter;
+    public float jumpTime;
+    private bool isJumping;
+
+    Vector3 originalPos;
+
+
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        //Si tiene el componente Deathzone ira a la posicion incial.
+        if (collision.GetComponent<DeathZone>())
+        {
+            transform.position = originalPos;
+        }
+
+        //if (collision.GetComponent<Coin>())
+        {
+            transform.position = originalPos;
+        }
+
+
+    }
+
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        originalPos = gameObject.transform.position;
+
+        rb = GetComponent<Rigidbody2D>();
+        _rend = GetComponent<SpriteRenderer>();
+        _animator = GetComponent<Animator>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+        print(GameManager.instance.GetTime());
+
+        dir = Vector2.zero;
+        if(Input.GetKey(rightKey))
+        {
+            _rend.flipX = false;
+            dir = Vector2.right;
+        }
+        else if(Input.GetKey(leftKey))
+        {
+            _rend.flipX = true;
+            dir = new Vector2(-1, 0);
+        }
+
+        _intentionToJump = false;
+        if(Input.GetKey(jumpKey)) 
+        {
+            _intentionToJump = true;
+        }
+
+
+
+        if( Input.GetKey(jumpKey) && isJumping)
+        {
+            if (jumpTimeCounter > 0)
+            {
+                rb.AddForce(Vector2.up * jumpForce);
+                jumpTimeCounter -= Time.deltaTime;
+            }
+            else
+            {
+                isJumping = true;
+            }
+
+            if(Input.GetKeyUp(jumpKey))
+            {
+                isJumping = false;
+            }
+
+
+        }
+
+        #region Animaciones
+
+        if (rb.velocity.x > 1f || rb.velocity.x < -1f) //
+        {
+            //estamos andando
+            _animator.SetBool("isWalking", true);
+        }
+        else 
+        {
+            //estamos parado 
+            _animator.SetBool("isWalking", false);
+        }
+
+        if(rb.velocity.y > 1)
+        {
+            _animator.SetBool("isJumping", true);
+        }
+        else
+        {
+            _animator.SetBool("isJumping", false);
+        }
+
+        #endregion
+
+    }
+
+    private void FixedUpdate()
+    {
+        bool grnd = IsGrounded();
+
+        if (dir != Vector2.zero)
+        {          
+            float currentYVel = rb.velocity.y;
+            Vector2 nVel = dir * speed;
+            nVel.y = currentYVel;
+
+            rb.velocity = nVel;
+        }
+        
+        if(_intentionToJump && grnd)
+        {
+            isJumping = true;
+            jumpTimeCounter = jumpTime;
+            _animator.Play("Jumping");
+            rb.velocity = new Vector2(rb.velocity.x, 0);
+            rb.AddForce(Vector2.up * jumpForce * rb.gravityScale, ForceMode2D.Impulse);
+            _intentionToJump = false;
+
+            AudioManager.instance.PlayAudio(jumpClip, "jumpSound");
+        }
+
+        _animator.SetBool("isGrounded", grnd);
+    }
+
+    private bool IsGrounded()
+    {
+        RaycastHit2D[] hits = Physics2D.CircleCastAll(transform.position, radius, Vector2.down);
+
+        foreach(RaycastHit2D hit in hits)
+        {
+            if(hit.collider.gameObject.layer == groundMask)
+            {
+                //Estamos tocando el suelo
+                return true;
+            }
+        }
+
+        return false;
+
+        //RaycastHit2D collision = Physics2D.Raycast(transform.position, Vector2.down, rayDistance, groundMask);
+        //if (collision)
+        //{
+            
+        //    return true;
+        //}
+
+        //return false;
+
+    }
+
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawRay(transform.position, Vector2.down * rayDistance);
+	Gizmos.DrawWireSphere(transform.position, radius);
+    }
+
+
+}
+
+
+Fades
+__________________________
+
+//Signado al jugador igual que el PlayerMovemente
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Fades : MonoBehaviour
+{
+    private SpriteRenderer _rend;
+    // Start is called before the first frame update
+    void Start()
+    {
+        _rend = GetComponent<SpriteRenderer>();  
+        StartCoroutine(FadeOut());
+    }
+
+    IEnumerator FadeOut()
+    {
+        Color color = _rend.color;
+        for(float alpha = 1.0f; alpha >=0; alpha -= 0.01f)
+        {
+            color.a = alpha;
+            _rend.color = color;
+            yield return new WaitForSeconds(0.02f);
+        }
+
+        StartCoroutine(FaceIn());
+    }
+
+
+    IEnumerator FaceIn()
+    {
+        Color color = _rend.color;
+        for (float alpha = 0.0f; alpha <= 1; alpha += 0.01f)
+        {
+            color.a = alpha;
+            _rend.color = color;
+            yield return new WaitForSeconds(0.02f);
+        }
+        StartCoroutine(FadeOut());
+    }
+
+
+}
+
+
+
+AudioManager
+_________________________________
+
+//Se lo añadimos a un Empty que llamamos AudioManager
+
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager instance;
+    private List<GameObject> audioList;
+    // Start is called before the first frame update
+    void Awake()
+    {
+        if (!instance)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
+        audioList = new List<GameObject>();
+    }
+
+    public AudioSource PlayAudio(AudioClip audioClip, string gameObjectName, bool isLoop = false, float volume = 1.0f)
+    {
+        //Crea un nuevo GameObject
+        GameObject audioObject = new GameObject(gameObjectName);
+        audioObject.transform.SetParent(transform);
+        //Añade el componente audio Source
+        AudioSource audioSourceComponent = audioObject.AddComponent<AudioSource>();
+        //Asignamos el clip
+        audioSourceComponent.clip = audioClip;
+        audioSourceComponent.volume = volume;
+        audioSourceComponent.loop = isLoop;
+        audioSourceComponent.Play();
+        audioList.Add(audioObject);
+        if (!isLoop)
+        {
+            StartCoroutine(WaitAudioEnd(audioSourceComponent));
+        }
+
+        return audioSourceComponent;
+    }
+
+    public  AudioSource PlayAudio3D(AudioClip audioClip, string gameObjectName, bool isLoop = false, float volume = 1.0f)
+    {
+        AudioSource audioSource = PlayAudio(audioClip, gameObjectName, false, volume);
+        audioSource.spatialBlend = 1.0f;
+
+        return audioSource;
+    }
+
+    IEnumerator WaitAudioEnd(AudioSource src) //Corrutina no pausa la ejecucion del programa
+    {
+        while(src && src.isPlaying)
+        {
+            yield return null;
+        }
+
+        Destroy(src.gameObject);
+    }
+
+    public void ClearAudios() 
+    { 
+        foreach (GameObject audioObject in audioList)
+        {
+            Destroy(audioObject);
+        }
+
+        audioList.Clear();
+    }
+}
+
+
+
+
+
+ButtonFunctions
+_________________________________
+
+//Se le añade a un Empty llamado ButtonFunctions
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ButtonFunctions : MonoBehaviour
+{
+    public void ExitGame()
+    {
+        GameManager.instance.ExitGame();
+    }
+
+    public void LoadSecene(string sceneName)
+    {
+        GameManager.instance.LoadScene(sceneName);
+    }
+
+}
+
+
+
+CameraControl
+_____________________________________
+
+//Se le añade a la camara
+//Le añadimos un componente Audio Listener
+//En Player le llevamos el GameObject de Marion't
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class CameraControl : MonoBehaviour
+{
+    public Transform player;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (player)
+            transform.position = Vector3.MoveTowards(transform.position, new Vector3(player.position.x, transform.position.y, -5f), 5f * Time.deltaTime);
+    }
+}
+
+
+Enemy
+_______________________
+
+//Se lo asignamos a EnemyGo, el cual tiene de hijo al Enemigo
+//Box Collider 2D no trigger
+//Speed: 2
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+    public float speed;
+    public Transform player;
+
+    private void Start()
+    {
+        player = FindAnyObjectByType<MarioScript>().transform;
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.GetComponent<MarioScript>())
+        {
+            Destroy(gameObject);
+        }
+    }
+    // Start is called before the first frame update
+
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (player)
+            transform.position = Vector2.MoveTowards(transform.position, new Vector2(player.position.x, transform.position.y), speed * Time.deltaTime);
+    }
+}
+
+
+Enemykill
+_______________________________
+
+//Se le añade al Enemigo, el cual es hijo de EnemiGo
+//Box Collider 2D no trigger
+//Rigidbody 2D: Material MarioMaterial; Mass 1; Linear Drag 10; Angular Drag 0.05; Gravity Scale 7;
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemykill : MonoBehaviour
+{
+
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.GetComponent<MarioScript>())
+        {
+            Destroy(collision.gameObject);
+        }
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+}
+
+
+
+
+
+Fades
+_____________________________
+
+//Se le añade al Marion't
+
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Fades : MonoBehaviour
+{
+    private SpriteRenderer _rend;
+    // Start is called before the first frame update
+    void Start()
+    {
+        _rend = GetComponent<SpriteRenderer>();  
+        StartCoroutine(FadeOut());
+    }
+
+    IEnumerator FadeOut()
+    {
+        Color color = _rend.color;
+        for(float alpha = 1.0f; alpha >=0; alpha -= 0.01f)
+        {
+            color.a = alpha;
+            _rend.color = color;
+            yield return new WaitForSeconds(0.02f);
+        }
+
+        StartCoroutine(FaceIn());
+    }
+
+
+    IEnumerator FaceIn()
+    {
+        Color color = _rend.color;
+        for (float alpha = 0.0f; alpha <= 1; alpha += 0.01f)
+        {
+            color.a = alpha;
+            _rend.color = color;
+            yield return new WaitForSeconds(0.02f);
+        }
+        StartCoroutine(FadeOut());
+    }
+
+
+}
+
+
+
+
+GameManager
+__________________________________
+
+//Se le añade a un Empty llamado GameManager
+
+
+
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class GameManager : MonoBehaviour
+{
+    public static GameManager instance;
+
+    public enum GameManagerVariables {  TIME, POINTS };
+
+    private float time;
+    private int points = 0;
+
+    private void Awake()
+    {
+        // Singleton
+        // gm = GameManager
+        if (!instance) //Si instance no tiene informacion | Isma ve que no hay personas guapas
+        {
+            instance = this; //instance se asigna a este objecto | Isma se vuelve la persona guapa
+            DontDestroyOnLoad(gameObject); // se indica que este obj no se destruya con la carga de escenas | Isma no se va de la fiesta
+        }
+        else // si instance tiene info | Si hay una persona guapa antes de Isma
+        {
+            Destroy(gameObject); // se destruye el gameobject, para que no haya dos o mas gms en el juego | Isma se va de la fiesta para que no haya mas de una persona guapa
+        }
+
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        time += Time.deltaTime;
+    }
+
+    public float GetTime()
+    {
+        return time;
+    }
+
+    // Getter
+    public int GetPoints()
+    {
+        return points;
+    }
+
+    // Setter
+    public void SetPoints(int value)
+    {
+        points = value;
+    }
+
+    //callback ---> funcion que se va a llamar en el onclick de los botones
+    public void LoadScene(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
+        AudioManager.instance.ClearAudios();
+    }
+
+    public void ExitGame()
+    {
+        Debug.Log("Exit");
+        Application.Quit();
+    }
+}
+
+
+
+PlayAudio
+____________________________
+
+//Se le añade a un Empty llamado BGMusic, en audio clip se le asigna el audio deseado, is loop; Play on game start; Volumen 1
+
+
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayAudio : MonoBehaviour
+{
+    public AudioClip audioClip;
+    public bool isLoop, playOnGameStart;
+    public float volume;
+    public string gameObjectName;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        if (playOnGameStart)
+        {
+            AudioManager.instance.PlayAudio(audioClip, gameObjectName, isLoop, volume);
+        }
+    }
+}
+
+
+
+
+
+UpdateText
+_________________________________
+
+//Asignado al TextMeshPro Time con la variable TIME
+
+
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class UpdateText : MonoBehaviour
+{
+    public GameManager.GameManagerVariables variable;
+
+    private TMP_Text textComponent;
+    private float timeElapsed;
+    private int minutes, seconds, cents;
+
+    
+
+    private void Start()
+    {
+        textComponent = GetComponent<TMP_Text>();
+    }
+    // Update is called once per frame
+    void Update()
+    {
+        
+
+        switch (variable)
+        {
+            case GameManager.GameManagerVariables.TIME:
+                timeElapsed += Time.deltaTime;
+                seconds = (int)(timeElapsed + 0);
+                cents = (int)((timeElapsed - (int)timeElapsed) * 100f);
+
+                textComponent.text = string.Format("{0:00}:{1:00}", seconds, cents);
+                break;
+            case GameManager.GameManagerVariables.POINTS:
+                textComponent.text = "Points: " + GameManager.instance.GetPoints();
+                break;
+            default:
+                break;
+        }
+    }
+
+    public void AddPoints()
+    {
+            
+    }
+
+}
+
+
+
+
+Sin Script
+______________________________
+
+Grid: Tilemap
+
+DeathZone: Es un Empty con un Box Collider 2D trigger con el Script Death Zone el cual esta vacio ya que el resto de scripts ya tienen programado como actuar cuando choquen con el pero aunque este vacio debe estar asignado
+
+Canvas:
+Boton Back To Menu: On Click +: Runtine Only (ButtonFunctions(El empty, no el Script)); ButtonFunctions.LoadScene: Menu.
+TextMeshPro Time: Text input 00:00; Asignado Update Text.
+
+Radio: Audio Source: Asignamos audio; Play On Awake; Loop: 3D Sound Settings: Min Distance 1; Max Distance 500.
+
+Mario Material: Es un Physics Material 2D con Friction 0 y Bounciness 0.
+
+Menu:
+__________
+
+Camara: Audio Listener
+
+Boton Play: On Click +: Runtine Only (ButtonFunctions(El empty, no el Script)); ButtonFunctions.LoadScene: Mario.
+
+Boton Exit: On Click +: Runtine Only (GameManager(El empty, no el Script)); GameManager.ExitGame.
+
+GameManager, AudiManager, PlayBG, ButtonFunctions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

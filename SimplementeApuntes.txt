@@ -1,0 +1,27 @@
+Abstract no se puede instanciar, no se puede hacer un "new" variable, Character es un concepto pero no es un algo, pero un cowboy si es un algo asi que no es abstract, es o public, o private, depende.
+
+
+Singleton:
+private void Awake()
+{
+    // Singleton
+    // gm = GameManager
+    if (!instance) //Si instance no tiene informacion | Isma ve que no hay personas guapas
+    {
+        instance = this; //instance se asigna a este objecto | Isma se vuelve la persona guapa
+        DontDestroyOnLoad(gameObject); // se indica que este obj no se destruya con la carga de escenas | Isma no se va de la fiesta
+    }
+    else // si instance tiene info | Si hay una persona guapa antes de Isma
+    {
+        Destroy(gameObject); // se destruye el gameobject, para que no haya dos o mas gms en el juego | Isma se va de la fiesta para que no haya mas de una persona guapa
+    }
+
+}
+
+Throw
+Exception
+TryCatch
+Animaciones
+Corrutinas
+diccionarios y esas mierdas
+arrays 2d 3d 

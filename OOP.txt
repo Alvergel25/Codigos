@@ -1,0 +1,256 @@
+
+Codigo:
+
+
+MenuButtons:
+_____________________________________
+
+Boton Play: Runtine Only +:ButtonFunctions (Empty); ButtonFunctions.LoadScene: Game | Runtine Only +:ButtonFunctions (Empty); ButtonFunctions.Select
+
+TextMeshPro - Input Field: Runtine Only +:ButtonFunctions (Empty); ButtonFunctions.SetName //Para guardar el nombre que el jugador elija.
+
+Dropdown - TextMeshPro: En Options le añadimos mas opciones con sus nombres, en este caso Wizard y Cowboy.
+
+
+
+
+
+GameManager:
+___________________________
+
+//Se le asigna a un empty llamado GamaManager
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class GameManager : MonoBehaviour
+{
+    public Character enemy; 
+
+    public Character character;
+
+    public static GameManager instance;
+
+    private string selectName; //Para el nombre que el jugador ponga al jugar
+
+    private void Awake()
+    {
+        if (!instance)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+
+    public void LoadScene(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public string GetName() //Para guardar el nombre, Getter
+    {
+        return selectName;
+    }
+
+    
+    public void SetName (string selectName) //Para dar el nomber, Sette
+    {
+        this.selectName = selectName; //Si se llamasen diferente no haria falta poner el "this."
+    }
+
+    public void ExitGame()
+    {
+        Debug.Log("Exit");
+        Application.Quit();
+    }
+
+    public void SelectCharacter(int value)
+    {
+        print (value);
+
+        if (value == 1)
+            character = new Wizard(2, selectName);
+        else if (value == 2)
+            character = new Cowboy(selectName);
+
+
+        int rnd = UnityEngine.Random.Range(0, 1);
+        if (rnd == 0)
+            enemy = new Sukamon("Sukamon");
+        else
+            enemy = new Goblin("Goblin");
+    }
+
+
+}
+
+
+
+
+ButtonFunctions:
+______________________________________
+
+//Se lo añadimos a un empty llamdo ButtonFunctions
+
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class ButtonFunctions : MonoBehaviour
+{
+    public void ExitGame()
+    {
+        GameManager.instance.ExitGame();
+    }
+
+    public void LoadScene(string sceneName)
+    {
+        GameManager.instance.LoadScene(sceneName);
+    }
+
+    public void Select()
+    {
+        TMP_Dropdown drop = FindObjectOfType<TMP_Dropdown>(); //Busca el objeto tipo Dropdown
+        print(drop.value); //Y nos devuelve su valor
+
+        GameManager.instance.SelectCharacter(drop.value);
+    }
+
+    public void SetName()
+    {
+        GameManager.instance.SetName(FindObjectOfType<TMP_InputField>().text); //Para que salgan los nombres en el jugador
+    }
+
+
+}
+
+
+
+Character:
+________________________________
+
+//Concepto de personage para herencias
+
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.U2D;
+
+public abstract class Character
+{
+    //publico accesivle en clase, clases hija y fuera de las clases
+    //privado solo en clase, en hijas no ni tampoco para fuera de la clase
+    //protected es accesivle por la clase, las clases hijas pero no para el exterior
+    public float health; 
+    private Sprite _sprite; 
+    private string _name;
+    protected float _damage;
+
+    public Character(string name, Sprite spr, float damage)
+    {
+        //Si tuvieran el mismo nombre, por ejemplo: name = name; podriamos poner un this delante: this.name = name: para diferenciarlos
+        _name = name;
+        _damage = damage;
+        _sprite = spr;
+        health = 100;
+    }
+
+    public abstract float Attack();
+
+    public virtual float Heal()
+    {
+        //if(health > 100)
+        //{
+        //    return 100;
+        //}
+        //else if(health < 0)
+        //{
+        //    return 0;
+        //}
+        //else
+        //{
+        //    return healt;
+        //}
+        //Esto  es lo mismo que esto
+        health = Mathf.Clamp(health, 0, 100);
+        return health;
+    }
+
+    public string GetName()
+    {
+        return _name;
+    }
+
+    public Sprite GetSprite()
+    {
+        return _sprite;
+    }
+
+    public float GetDamage()
+    {
+        return _damage;
+    }
+}
+
+
+
+Cowboy:
+________________________________
+
+//Hereda de Character
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Cowboy : Character
+{
+    public Cowboy(string _name) : base(_name, Resources.Load<Sprite>("Sprites/Cowboyspr"), 15)
+    {
+
+    }
+
+    public override float Attack()
+    {
+        Debug.Log("Cowboy Attack");
+        return Random.Range(_damage, _damage * 1.5f);
+    }
+
+    public override float Heal()
+    {
+        health += 10;
+        base.Heal();
+        return 10;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
